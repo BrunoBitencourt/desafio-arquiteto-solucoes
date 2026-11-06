@@ -71,6 +71,35 @@ Os testes deverão considerar:
 
 O critério de aceitação será manter a perda de requisições em até 5% durante o cenário de carga definido.
 
+### 4.2. Resultados dos testes funcionais e de resiliência
+
+Em 06/11/2026, foi executado um teste prático para verificar o comportamento da solução durante a indisponibilidade temporária do serviço de consolidação.
+
+**Cenário executado:**
+
+1. O `consolidacao-service` foi interrompido, mantendo o RabbitMQ e o banco de dados do serviço de lançamentos disponíveis.
+2. Foi enviado um lançamento pela API do `lancamentos-service`, com valor de R$ 200,00, tipo `CREDITO` e data `2026-11-06`.
+3. A API respondeu com sucesso e retornou o lançamento com ID `18`.
+4. No RabbitMQ, foi observada uma mensagem aguardando na fila `lancamentos.criados` (`Ready = 1`), enquanto o serviço de consolidação permanecia desligado.
+5. O `consolidacao-service` foi iniciado novamente e estabeleceu conexão com o RabbitMQ.
+6. O log da aplicação confirmou o recebimento da mensagem referente ao lançamento de ID `18`.
+7. A consulta à API `GET /api/lancamentos-recebidos` confirmou a persistência do lançamento no banco `consolidacao_db`.
+8. A consulta `GET /api/lancamentos-recebidos/consolidado?data=2026-11-06` retornou os totais diários.
+
+**Resultado da consolidação em 06/11/2026:**
+
+| Indicador | Resultado |
+|---|---:|
+| Total de créditos | R$ 200,00 |
+| Total de débitos | R$ 231,00 |
+| Saldo diário | R$ -31,00 |
+
+O saldo foi calculado corretamente: R$ 200,00 - R$ 231,00 = R$ -31,00.
+
+**Conclusão do teste:** o cenário demonstrou que o serviço de lançamentos conseguiu registrar um lançamento enquanto o serviço de consolidação estava indisponível; a mensagem permaneceu na fila RabbitMQ e foi consumida após o retorno do consumidor, com posterior persistência e inclusão no consolidado diário.
+
+Este teste comprova o comportamento funcional observado nesse cenário específico. Não representa, por si só, comprovação de alta disponibilidade da infraestrutura, nem validação de carga de 50 requisições por segundo ou da meta de perda máxima de 5%. Esses requisitos continuam pendentes de testes específicos.
+
 **Observação:** os testes de carga ainda precisam ser executados para comprovar o atendimento desse requisito. A arquitetura foi projetada considerando esse objetivo, mas não se afirma que a capacidade já foi comprovada.
 
 ## 5. Arquitetura da solução
@@ -281,13 +310,15 @@ Para diferenciar o que já foi desenvolvido do que representa uma evolução pla
 
 | Recurso | Situação |
 |---|---|
-| Registro de lançamentos | Implementado |
-| Persistência no PostgreSQL | Implementado |
-| Publicação e consumo via RabbitMQ | Implementado |
-| Consolidação diária | Implementado |
-| Idempotência no recebimento | Implementado |
+| Registro de lançamentos | Implementado e testado |
+| Persistência no PostgreSQL | Implementado e testado |
+| Publicação e consumo via RabbitMQ | Implementado e testado |
+| Consolidação diária | Implementado e testado |
+| Idempotência no recebimento | Implementado; teste de duplicidade executado anteriormente |
 | Retentativas de processamento | Configurado |
 | Dead Letter Queue | Configurado |
+| Continuidade do serviço de lançamentos com o consumidor desligado | Testado com sucesso |
+| Acúmulo e consumo posterior de mensagem após retorno do consumidor | Testado com sucesso |
 | Variáveis de ambiente para credenciais | Configurado |
 | Spring Boot Actuator | Configurado |
 | Transactional Outbox | Planejado |
