@@ -334,3 +334,46 @@ A solução demonstra uma arquitetura baseada em microsserviços e orientada a e
 O uso de RabbitMQ, retentativas, DLQ e idempotência contribui para a confiabilidade do processamento.
 
 As evoluções propostas, especialmente o padrão Transactional Outbox, a observabilidade avançada e os testes de carga, permitem aproximar a solução de um ambiente produtivo, considerando os requisitos de disponibilidade, desempenho e confiabilidade.
+
+## 15. Estimativa de custos de infraestrutura
+
+Para avaliar a viabilidade financeira da solução, foi elaborada uma estimativa preliminar de custos utilizando a AWS como provedora de nuvem e a região de São Paulo (`sa-east-1`) como referência.
+
+A arquitetura considera os seguintes componentes:
+
+| Componente | Serviço AWS | Estimativa mensal |
+|---|---|---:|
+| Dois microsserviços Java | Amazon EC2 | R$ 700–1.200 |
+| Banco de dados PostgreSQL | Amazon RDS Multi-AZ | R$ 1.200–2.000 |
+| Mensageria RabbitMQ | Amazon MQ, cluster de 3 nós | R$ 3.500–4.500 |
+| Balanceamento de carga | Application Load Balancer | R$ 150–300 |
+| Monitoramento e logs | Amazon CloudWatch | R$ 100–250 |
+| Armazenamento e backups | Amazon EBS / S3 | R$ 100–250 |
+| Rede e transferência de dados | Amazon VPC / NAT | R$ 300–600 |
+| **Total estimado** | | **R$ 6.050–9.100/mês** |
+
+### Premissas utilizadas
+
+- Execução contínua dos serviços durante 30 dias.
+- Dois microsserviços executados em instâncias EC2.
+- Bancos PostgreSQL separados logicamente, inicialmente hospedados em uma infraestrutura RDS compartilhada.
+- Banco de dados com configuração Multi-AZ para maior disponibilidade.
+- RabbitMQ gerenciado por meio do Amazon MQ, utilizando cluster de três nós.
+- Balanceamento de carga para distribuição das requisições.
+- Monitoramento de métricas, logs e disponibilidade.
+- Armazenamento de dados e backups.
+
+### Estratégia de otimização de custos
+
+Para reduzir os custos operacionais, recomenda-se:
+
+- Avaliar o dimensionamento das instâncias conforme o volume real de utilização.
+- Utilizar escalabilidade horizontal conforme a demanda.
+- Avaliar Savings Plans para cargas de trabalho estáveis.
+- Configurar políticas de retenção de logs.
+- Monitorar o consumo de armazenamento e transferência de dados.
+- Reavaliar periodicamente os recursos provisionados.
+
+**Observação:** os valores apresentados são estimativas preliminares para planejamento arquitetural, não representam uma cotação oficial da AWS. O custo definitivo deverá ser validado na AWS Pricing Calculator, considerando os tipos de instância, armazenamento, tráfego, disponibilidade e preços específicos da região escolhida.
+
+A estimativa também deverá ser revisada após a execução dos testes de carga de 50 requisições por segundo, permitindo dimensionar a infraestrutura de acordo com a demanda real.
