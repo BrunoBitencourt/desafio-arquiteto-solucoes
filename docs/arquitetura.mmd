@@ -4,23 +4,27 @@ flowchart LR
 
     subgraph LANC["lancamentos-service"]
         API1["API REST"]
-        DB1[("PostgreSQL<br/>Lançamentos")]
+        DB1[("PostgreSQL<br/>lancamentos_db")]
         PUB["Publicador RabbitMQ"]
-        API1 --> DB1
-        DB1 --> PUB
+
+        API1 -->|"1. Registra lançamento"| DB1
+        DB1 -->|"2. Publica após persistência<br/>(sem Outbox)"| PUB
     end
 
     subgraph MQ["RabbitMQ"]
-        FILA["Fila lancamentos.criados"]
-        DLQ["Dead Letter Queue"]
+        FILA["Fila<br/>lancamentos.criados"]
+        DLQ["Dead Letter Queue<br/>lancamentos.criados.dlq"]
     end
 
     subgraph CONS["consolidacao-service"]
         CONSUMER["Consumer"]
+        RETRY["Retentativas<br/>até 2"]
         VALID["Validação e idempotência"]
-        DB2[("PostgreSQL<br/>Lançamentos recebidos")]
+        DB2[("PostgreSQL<br/>consolidacao_db")]
         API2["API REST<br/>Consulta consolidado"]
-        CONSUMER --> VALID
+
+        CONSUMER --> RETRY
+        RETRY --> VALID
         VALID --> DB2
         DB2 --> API2
     end
@@ -28,5 +32,5 @@ flowchart LR
     CLIENTE --> API1
     PUB --> FILA
     FILA --> CONSUMER
-    CONSUMER -. "Falhas não recuperáveis" .-> DLQ
+    RETRY -.->|"Falhas não recuperáveis<br/>ou tentativas esgotadas"| DLQ
     CLIENTE --> API2
