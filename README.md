@@ -1,4 +1,3 @@
-
 # Controle de Fluxo de Caixa
 
 Solução desenvolvida como desafio técnico para demonstrar uma arquitetura baseada em microsserviços, utilizando Java, Spring Boot, PostgreSQL e RabbitMQ.
@@ -10,19 +9,27 @@ A solução permite registrar lançamentos financeiros (créditos e débitos) e 
 A arquitetura é composta por dois microsserviços:
 
 - **lancamentos-service:** responsável pelo registro e publicação dos lançamentos.
-- **consolidacao-service:** responsável pelo consumo das mensagens, persistência e consolidação diária.
+- **consolidacao_service:** responsável pelo consumo das mensagens, persistência e consolidação diária.
+
+A comunicação entre os serviços é assíncrona, utilizando RabbitMQ, evitando o acoplamento direto entre o registro de lançamentos e o processamento da consolidação.
 
 ## 2. Arquitetura
 
-A comunicação entre os serviços utiliza RabbitMQ, seguindo o padrão de arquitetura orientada a eventos (Event-Driven Architecture).
+A solução utiliza uma arquitetura orientada a eventos (Event-Driven Architecture).
 
-O diagrama da solução está disponível em:
+O fluxo funciona da seguinte forma:
 
-`docs/arquitetura.mmd`
+1. O cliente envia um lançamento para o `lancamentos-service`.
+2. O serviço registra o lançamento no PostgreSQL.
+3. Uma mensagem é publicada no RabbitMQ.
+4. O `consolidacao_service` consome a mensagem.
+5. O lançamento recebido é validado e persistido.
+6. A API de consolidação disponibiliza o resultado diário.
 
-A documentação arquitetural completa está em:
+Documentação arquitetural:
 
-`docs/arquitetura.md`
+- `docs/arquitetura.md`: requisitos, domínios funcionais e decisões arquiteturais.
+- `docs/arquitetura.mmd`: diagrama da solução.
 
 ## 3. Tecnologias utilizadas
 
@@ -32,74 +39,108 @@ A documentação arquitetural completa está em:
 - PostgreSQL
 - RabbitMQ
 - Maven
+- Flyway
 
 ## 4. Estrutura do projeto
 
 ```text
 Teste_Projeto/
 ├── lancamentos-service/
+│   └── src/
 ├── consolidacao_service/
+│   └── src/
 ├── docs/
 │   ├── arquitetura.md
 │   └── arquitetura.mmd
+├── .gitignore
 └── README.md
 ```
 
 ## 5. Pré-requisitos
 
-Para executar localmente, é necessário ter instalado:
+Para executar a aplicação localmente, é necessário ter instalado:
 
 - Java 21
 - PostgreSQL
 - RabbitMQ
 
-Também é necessário configurar os bancos de dados e as credenciais de conexão nos arquivos de configuração de cada serviço.
+Também é necessário:
 
-Não utilize credenciais reais ou senhas pessoais no repositório público.
+- Criar os bancos de dados `lancamentos_db` e `consolidacao_db`.
+- Configurar um usuário com permissões nos dois bancos.
+- Configurar as credenciais de acesso ao RabbitMQ.
+- Garantir que PostgreSQL e RabbitMQ estejam em execução.
 
-## 6. Executando a aplicação
+As migrations do Flyway são executadas na inicialização dos serviços.
 
-### 6.1. Iniciar o RabbitMQ
+**Importante:** as credenciais são fornecidas por variáveis de ambiente. Não armazene senhas reais no repositório.
 
-Certifique-se de que o RabbitMQ esteja em execução e que a fila `lancamentos.criados` esteja configurada.
+## 6. Executando a aplicação no Windows
 
-A fila de mensagens não processadas é:
+Os comandos abaixo utilizam o PowerShell.
 
-`lancamentos.criados.dlq`
+Os dois microsserviços devem ser executados em terminais separados.
 
-### 6.2. Iniciar o serviço de lançamentos
+### 6.1. Iniciar o serviço de lançamentos
 
-No terminal:
+Abra um terminal PowerShell e acesse a pasta:
 
-```bash
-cd lancamentos-service
-./mvnw spring-boot:run
+```powershell
+cd C:\Teste_Projeto\lancamentos-service
 ```
 
-No Windows PowerShell:
+Configure as variáveis de ambiente:
+
+```powershell
+$env:APP_USER = "desafio"
+$env:APP_PASSWORD = "SUA_SENHA_LOCAL"
+
+$env:DB_USERNAME = "SEU_USUARIO"
+$env:DB_PASSWORD = "SUA_SENHA_DO_BANCO"
+$env:DB_URL = "jdbc:postgresql://localhost:5433/lancamentos_db"
+
+$env:RABBITMQ_USERNAME = "SEU_USUARIO_RABBITMQ"
+$env:RABBITMQ_PASSWORD = "SUA_SENHA_RABBITMQ"
+$env:RABBITMQ_HOST = "localhost"
+$env:RABBITMQ_PORT = "5672"
+```
+
+Execute o serviço:
 
 ```powershell
 .\mvnw spring-boot:run
 ```
 
-Serviço disponível na porta 8080.
+Serviço disponível na porta **8080**.
 
-### 6.3. Iniciar o serviço de consolidação
+### 6.2. Iniciar o serviço de consolidação
 
-Em outro terminal:
+Abra outro terminal PowerShell e acesse:
 
-```bash
-cd consolidacao_service
-./mvnw spring-boot:run
+```powershell
+cd C:\Teste_Projeto\consolidacao_service
 ```
 
-No Windows PowerShell:
+Configure as variáveis de ambiente:
+
+```powershell
+$env:DB_USERNAME = "SEU_USUARIO"
+$env:DB_PASSWORD = "SUA_SENHA_DO_BANCO"
+$env:DB_URL = "jdbc:postgresql://localhost:5433/consolidacao_db"
+
+$env:RABBITMQ_USERNAME = "SEU_USUARIO_RABBITMQ"
+$env:RABBITMQ_PASSWORD = "SUA_SENHA_RABBITMQ"
+$env:RABBITMQ_HOST = "localhost"
+$env:RABBITMQ_PORT = "5672"
+```
+
+Execute o serviço:
 
 ```powershell
 .\mvnw spring-boot:run
 ```
 
-Serviço disponível na porta 8181.
+Serviço disponível na porta **8181**.
 
 ## 7. Consulta do consolidado diário
 
@@ -124,40 +165,12 @@ O saldo é calculado pela fórmula:
 
 **Saldo = Total de créditos - Total de débitos**
 
-## 8. Resiliência e confiabilidade
+Também está disponível o endpoint:
 
-A solução contempla:
-
-- Comunicação assíncrona via RabbitMQ.
-- Retentativas no processamento de mensagens.
-- Dead Letter Queue (DLQ).
-- Validação de mensagens.
-- Idempotência no recebimento de lançamentos.
-
-## 9. Testes
-
-Para executar os testes automatizados do serviço de consolidação:
-
-```powershell
-cd consolidacao_service
-.\mvnw test
+```http
+GET http://localhost:8181/api/lancamentos-recebidos
 ```
 
-Os testes validam:
+Para consultar os lançamentos recebidos pelo serviço de consolidação.
 
-- Cálculo correto do consolidado diário.
-- Saldo negativo quando os débitos superam os créditos.
-- Retorno de valores zerados quando não existem lançamentos.
-
-## 10. Evoluções futuras
-
-- Implementação do padrão Outbox.
-- Autenticação e autorização das APIs.
-- Alta disponibilidade de banco de dados e mensageria.
-- Testes de carga para validar 50 requisições por segundo.
-- Monitoramento com Prometheus e Grafana.
-- Estratégia de reprocessamento da DLQ.
-
-## 11. Documentação
-
-Consulte a pasta `docs` para conhecer os domínios funcionais, requisitos, decisões arquiteturais e desenho da solução.
+## 8. Resiliência e
