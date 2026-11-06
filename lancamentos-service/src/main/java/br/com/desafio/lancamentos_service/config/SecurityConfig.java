@@ -1,6 +1,7 @@
 
 package br.com.desafio.lancamentos_service.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -15,15 +16,25 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration
 public class SecurityConfig {
 
-    @Bean
-    public UserDetailsService userDetailsService() {
-        PasswordEncoder encoder =
-            PasswordEncoderFactories.createDelegatingPasswordEncoder();
+    @Value("${APP_USER}")
+    private String appUser;
 
-        UserDetails usuario = User.withUsername("desafio")
-            .password(encoder.encode("desafio123"))
-            .roles("USER")
-            .build();
+    @Value("${APP_PASSWORD}")
+    private String appPassword;
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return PasswordEncoderFactories.createDelegatingPasswordEncoder();
+    }
+
+    @Bean
+    public UserDetailsService userDetailsService(
+            PasswordEncoder passwordEncoder) {
+
+        UserDetails usuario = User.withUsername(appUser)
+                .password(passwordEncoder.encode(appPassword))
+                .roles("USER")
+                .build();
 
         return new InMemoryUserDetailsManager(usuario);
     }
