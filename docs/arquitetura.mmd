@@ -1,0 +1,32 @@
+
+flowchart LR
+    CLIENTE["Cliente / Sistema externo"]
+
+    subgraph LANC["lancamentos-service"]
+        API1["API REST"]
+        DB1[("PostgreSQL<br/>Lançamentos")]
+        PUB["Publicador RabbitMQ"]
+        API1 --> DB1
+        DB1 --> PUB
+    end
+
+    subgraph MQ["RabbitMQ"]
+        FILA["Fila lancamentos.criados"]
+        DLQ["Dead Letter Queue"]
+    end
+
+    subgraph CONS["consolidacao-service"]
+        CONSUMER["Consumer"]
+        VALID["Validação e idempotência"]
+        DB2[("PostgreSQL<br/>Lançamentos recebidos")]
+        API2["API REST<br/>Consulta consolidado"]
+        CONSUMER --> VALID
+        VALID --> DB2
+        DB2 --> API2
+    end
+
+    CLIENTE --> API1
+    PUB --> FILA
+    FILA --> CONSUMER
+    CONSUMER -. "Falhas não recuperáveis" .-> DLQ
+    CLIENTE --> API2

@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "lancamentos-service"
+		},
+		{
+			"path": "consolidacao_service"
+		}
+	],
+	"settings": {
+		"java.compile.nullAnalysis.mode": "automatic"
+	}
+}
