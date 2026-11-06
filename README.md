@@ -173,4 +173,49 @@ GET http://localhost:8181/api/lancamentos-recebidos
 
 Para consultar os lançamentos recebidos pelo serviço de consolidação.
 
-## 8. Resiliência e
+## 8. Resiliência e confiabilidade
+
+A solução contempla:
+
+- Comunicação assíncrona via RabbitMQ.
+- Retentativas no processamento de mensagens.
+- Dead Letter Queue (DLQ).
+- Validação de mensagens recebidas.
+- Idempotência no recebimento de lançamentos.
+
+A separação entre os serviços permite que o registro de lançamentos continue funcionando mesmo quando o serviço de consolidação apresenta falhas, desde que o banco de lançamentos e a infraestrutura de mensageria estejam disponíveis.
+
+## 9. Testes automatizados
+
+Para executar os testes do serviço de lançamentos:
+
+```powershell
+cd C:\Teste_Projeto\lancamentos-service
+.\mvnw clean test
+```
+
+Para executar os testes do serviço de consolidação:
+
+```powershell
+cd C:\Teste_Projeto\consolidacao_service
+.\mvnw clean test
+```
+
+Os testes de consolidação validam:
+
+- Cálculo correto dos totais diários.
+- Saldo negativo quando os débitos superam os créditos.
+- Retorno de valores zerados quando não existem lançamentos.
+
+## 10. Evoluções futuras
+
+- Implementação do padrão Transactional Outbox.
+- Autenticação e autorização das APIs.
+- Alta disponibilidade do banco de dados e da mensageria.
+- Testes de carga para validar o requisito de 50 requisições por segundo.
+- Monitoramento com Prometheus e Grafana.
+- Estratégia de reprocessamento da DLQ.
+
+## 11. Documentação
+
+Consulte a pasta `docs` para conhecer os domínios funcionais, requisitos funcionais e não funcionais, decisões arquiteturais e desenho da solução.
