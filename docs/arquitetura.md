@@ -377,3 +377,58 @@ Para reduzir os custos operacionais, recomenda-se:
 **Observação:** os valores apresentados são estimativas preliminares para planejamento arquitetural, não representam uma cotação oficial da AWS. O custo definitivo deverá ser validado na AWS Pricing Calculator, considerando os tipos de instância, armazenamento, tráfego, disponibilidade e preços específicos da região escolhida.
 
 A estimativa também deverá ser revisada após a execução dos testes de carga de 50 requisições por segundo, permitindo dimensionar a infraestrutura de acordo com a demanda real.
+
+
+## 16. Teste de carga e validação de desempenho
+
+### 16.1 Objetivo
+
+Validar o comportamento do serviço de lançamentos sob carga, considerando o requisito não funcional de receber até 50 requisições por segundo, com percentual máximo de perda de 5%.
+
+### 16.2 Ferramenta utilizada
+
+Foi utilizado o k6, ferramenta de testes de carga, com o seguinte cenário:
+
+- Executor: constant-arrival-rate
+- Taxa configurada: 50 iterações por segundo
+- Duração: 1 minuto
+- Requisição: POST /api/lancamentos
+- Autenticação: HTTP Basic Auth
+- Validação: resposta HTTP 201
+- Limite de falhas HTTP: inferior a 5%
+
+### 16.3 Resultados obtidos
+
+Foram realizados dois testes completos:
+
+| Indicador | Teste 1 | Teste 2 |
+|---|---:|---:|
+| Requisições concluídas | 2.958 | 2.956 |
+| Vazão média | 48,91 req/s | 48,75 req/s |
+| Falhas HTTP | 0% | 0% |
+| Iterações descartadas | 43 | 33 |
+| Percentil 95 (P95) | 1,22 s | 2,31 s |
+
+Todas as requisições efetivamente executadas receberam resposta HTTP 201.
+
+### 16.4 Análise dos resultados
+
+Os testes demonstraram que o serviço processou aproximadamente 49 requisições por segundo, sem falhas HTTP nas requisições concluídas.
+
+Entretanto, foram registradas iterações descartadas pelo k6, indicando que o ambiente local não conseguiu executar integralmente a taxa de chegada configurada de 50 iterações por segundo.
+
+Portanto, embora os resultados estejam próximos da meta estabelecida, não é possível afirmar que o requisito de 50 requisições por segundo, com perda máxima de 5%, foi integralmente comprovado.
+
+### 16.5 Considerações e evolução
+
+O teste foi executado em ambiente local de desenvolvimento, compartilhando recursos entre as aplicações Spring Boot, PostgreSQL, RabbitMQ e ferramentas de desenvolvimento.
+
+Para uma validação definitiva em ambiente de produção, recomenda-se:
+
+- Executar testes em infraestrutura dimensionada para a carga esperada.
+- Monitorar CPU, memória, conexões e tempos de resposta.
+- Avaliar o desempenho das operações de persistência e publicação de mensagens.
+- Realizar novos testes progressivos de carga e estresse.
+- Avaliar ajustes no pool de conexões e na capacidade de processamento.
+
+Os resultados demonstram uma boa aproximação da capacidade esperada, mas a validação definitiva do requisito permanece como ponto de evolução.
